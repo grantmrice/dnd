@@ -69,6 +69,7 @@ dnd = {
 				}else if(arg.match(/^[\+\-]?\d+\/[\+\-]?\d+$/)){ // (+/-)[number] / (+\-)[number]
 					if(arg.match(/[\+\-]/)){
 						// break point modifier
+						// bruh this one is gonna be rough
 					}else{
 						// break points
 					}
