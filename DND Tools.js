@@ -44,69 +44,157 @@ dnd = {
 			
 			return result;
 		},
-		disassemble: (item)=>{
-			var ingredients = [];
+		dismantle: (item)=>{
+			var components = [];
 			item = item.toUpperCase();
-			for(arg of item.trim().split(",")){
-				arg = arg.toUpperCase();
-				if(arg.match(/^\d+\-\d+$/)){ // [number]-[number]
-					// price-level
-				}else if(arg.match(/^\d+$/)){ // [number]
-					// level
-				}else if(arg.match(/^AC\d*[\+\-]?\d+$/)){ // ac(number)(+/-[number])
-					if(arg.match(/[\+\-]/)){
+			for(argString of item.trim().split(",")){
+				var mods = [];
+				argString = argString.toUpperCase();
+				if(argString.match(/^\d+\-\d+$/)){ // [number]-[number]
+					// price-level - unused?
+					continue;
+				}else if(argString.match(/^\d+$/)){ // [number]
+					// level - unused
+					continue;
+				}else if(argString.match(/^AC\d*[\+\-]?\d+$/)){ // ac(number)(+/-[number])
+					if(argString.match(/[\+\-]/)){
 						// AC modifier
-						var target = Number(arg.match(/[\+\-]\d+/));
+						var target = Number(argString.match(/[\+\-]\d+/));
 						var getValue = (result)=>result.dac;
 						var getUnit = ()=>Math.sign(target);
-						var getItemText = (mod)=> mod.level + ",ac" + (mod.value > 0? "+" : "") + mod.value;
-						var mods = dnd.crafting.disassembleProperty(target, getValue, getUnit, getItemText);
+						var getArgText = (mod)=> "ac" + (mod.value > 0? "+" : "") + mod.value;
+						mods = dnd.crafting.dismantleMod(target, getValue, getUnit, getArgText);
 						console.log("dac", mods);
-					}
-					if(arg.match(/AC\d+/)){
+					}else if(argString.match(/AC\d+/)){
 						// AC
+						var target = Number(argString.match(/\d+/)) - 10;
+						var getValue = (result)=>result.ac - 10;
+						var getUnit = ()=>Math.sign(target);
+						var getArgText = (mod)=> "ac" + (Number(mod.value) + 10);
+						mods = dnd.crafting.dismantleMod(target, getValue, getUnit, getArgText);
+						console.log("ac", mods);
 					}
-				}else if(arg.match(/^[\+\-]?\d+\/[\+\-]?\d+$/)){ // (+/-)[number] / (+\-)[number]
-					if(arg.match(/[\+\-]/)){
+				}else if(argString.match(/^[\+\-]?\d+\/[\+\-]?\d+[A-Z]*$/)){ // (+/-)[number] / (+\-)[number]
+					if(argString.match(/[\+\-]/)){
 						// break point modifier
-						// bruh this one is gonna be rough
+						
+						// break point min - no calculations needed
+						var bpMin = Number(argString.match(/[\+\-]?\d+/));
+						
+						// break point max
+						var target = Number(argString.match(/[\+\-]?\d+$/));
+						var getValue = (result)=>result.breakPointMax;
+						var getUnit = ()=>Math.sign(target);
+						var getArgText = (mod)=> {
+							if(!mod.bpMin) mod.bpMin = 0;
+							return mod.bpMin + "/" + (mod.value > 0? "+" : "") + mod.value;
+						}
+						mods = dnd.crafting.dismantleMod(target, getValue, getUnit, getArgText);
+						
+						// combine values
+						var avgBPMin = Math.floor(bpMin / mods.length);
+						var best;
+						var hiScore = 0;
+						for(mod of mods){
+							bpMin -= avgBPMin;
+							mod.bpMin = avgBPMin;
+							if(Math.abs(mod.value) > hiScore){
+								best = mod;
+								hiScore = Math.abs(mod.value);
+							}
+						}
+						if(bpMin){
+							best.bpMin += bpMin;
+						}
+						console.log("dBP", mods);
 					}else{
-						// break points
+						// break points - no calculations needed
 					}
-				}else if(arg.match(/^HIT[\+\-]?\d+$/)){ // hit(+/-)[number]
+				}else if(argString.match(/^HIT[\+\-]?\d+$/)){ // hit(+/-)[number]
 					// hit modifier
-					var target = Number(arg.match(/[\+\-]?\d+/));
+					var target = Number(argString.match(/[\+\-]?\d+/));
 					var getValue = (result)=>result.hit;
 					var getUnit = ()=>Math.sign(target);
-					var getItemText = (mod)=> mod.level + ",hit" + (mod.value > 0? "+" : "") + mod.value;
-					var mods = dnd.crafting.disassembleProperty(target, getValue, getUnit, getItemText);
+					var getArgText = (mod)=> "hit" + (mod.value > 0? "+" : "") + mod.value;
+					mods = dnd.crafting.dismantleMod(target, getValue, getUnit, getArgText);
 					console.log("hit", mods);
-				}else if(arg.match(/^DMG[\+\-]?\d+$/)){ // dmg(+/-)[number]
+				}else if(argString.match(/^DMG[\+\-]?\d+$/)){ // dmg(+/-)[number]
 					// dmg modifier
-					var target = Number(arg.match(/[\+\-]?\d+/));
+					var target = Number(argString.match(/[\+\-]?\d+/));
 					var getValue = (result)=>result.ddmg;
 					var getUnit = ()=>Math.sign(target);
-					var getItemText = (mod)=> mod.level + ",dmg" + (mod.value > 0? "+" : "") + mod.value;
-					var mods = dnd.crafting.disassembleProperty(target, getValue, getUnit, getItemText);
+					var getArgText = (mod)=> "dmg" + (mod.value > 0? "+" : "") + mod.value;
+					mods = dnd.crafting.dismantleMod(target, getValue, getUnit, getArgText);
 					console.log("dmg", mods);
-				}else if(arg.match(/^LUCK[\+\-]?\d+$/)){ // luck(+/-)[number]
+				}else if(argString.match(/^LUCK[\+\-]?\d+$/)){ // luck(+/-)[number]
 					// luck save modifier
-					var target = Number(arg.match(/[\+\-]?\d+/));
+					var target = Number(argString.match(/[\+\-]?\d+/));
 					var getValue = (result)=>result.luck;
 					var getUnit = ()=>Math.sign(target);
-					var getItemText = (mod)=> mod.level + ",luck" + (mod.value > 0? "+" : "") + mod.value;
-					var mods = dnd.crafting.disassembleProperty(target, getValue, getUnit, getItemText);
+					var getArgText = (mod)=> "luck" + (mod.value > 0? "+" : "") + mod.value;
+					mods = dnd.crafting.dismantleMod(target, getValue, getUnit, getArgText);
 					console.log("luck", mods);
-				}else if(arg.match(/^CH\d+$/)){ // ch[number]
-					// charges
-				}else if(arg.match(/^\d+D\d+[A-Z]*$/)){ // [dice]d[size](TYPE)
+				}else if(argString.match(/^CH\d+$/)){ // ch[number]
+					// chargStringes
+					var target = Number(argString.match(/\d+/));
+					var getValue = (result)=>result.chargStringes;
+					var getUnit = ()=>1;
+					var getArgText = (mod)=> "ch" + mod.value;
+					mods = dnd.crafting.dismantleMod(target, getValue, getUnit, getArgText);
+					console.log("ch", mods);
+				}else if(argString.match(/^\d+D\d+[A-Z]*$/)){ // [dice]d[size](TYPE)
 					// damage
+					var argStringDice = Number(argString.match(/\d+/));
+					var argStringDieSize = Number(argString.match(/(?<=D)\d+/));
+					var avgDamage = argStringDice * (argStringDieSize/2 + .5);
+					var type = argString.match(/[A-Z]*$/) + "";
+					
+					// autocorrect with default damage types
+					var defaultTypes = ["bludgeoning", "piercing", "slashing", "fire", "cold", "poison", "acid", "necrotic", "radiant", "force", "psychic", "lightning", "thunder", "cosmic"];
+					for(defaultType of defaultTypes){
+						if(type[0] && !defaultType.toUpperCase().indexOf(type)){
+							type = defaultType;
+							break;
+						}
+					}
+					
+					// optimize for average damage, smallest dice first, i've tried variations
+					var target = avgDamage;
+					var getValue = (result)=>{
+						var dice = result.damage.match(/\d+d\d+/)[0];
+						var nDice = dice.match(/\d+/);
+						var dieSize = dice.match(/\d+$/);
+						return nDice * (dieSize / 2 + .5);
+					};
+					var getUnit = ()=>2.5;
+					var getArgText = (mod)=>{
+						for(dieSize of [4,6,8,10,12,20,100]){
+							if((mod.value / (dieSize/2 + .5)) % 1 == 0){
+								return (mod.value / (dieSize/2 + .5)) + "d" + dieSize + (type? type : "");
+							}
+						}
+					}
+					mods = dnd.crafting.dismantleMod(target, getValue, getUnit, getArgText);
+					console.log("dmg", mods);
+					
 				}else{
-					// tags
+					// tags - no caluclations necessary, may have duplicates
+				}
+				
+				if(mods.length){
+					for(mod of mods){
+						for(var i = 0; i < mod.count; i++){
+							components.push(getArgText(mod));
+						}
+					}
+				}else{
+					components.push(argString.toLowerCase());
 				}
 			}
+			
+			return components;
 		},
-		disassembleProperty: (target, getValue, getUnit, getItemText)=>{
+		dismantleMod: (target, getValue, getUnit, getArgText)=>{
 			var bestAttempt;
 			var preview;
 			var solutions = [];
@@ -123,7 +211,7 @@ dnd = {
 					var testItem = "";
 					for(mod of mods){
 						for(var n = 0; n < mod.count; n++){
-							testItem += " " + getItemText(mod);
+							testItem += " " + mod.level + "," + getArgText(mod);
 						}
 					}
 					//console.log("testing", testItem);
@@ -131,7 +219,7 @@ dnd = {
 					// test the given values
 					preview = dnd.crafting.merge(testItem);
 					value = getValue(preview.result);
-					//console.log(preview.item, value, JSON.parse(JSON.stringify(mods)));
+					//console.log(preview.item, value, JSON.parse(JSON.stringify(preview)));
 					
 					if(value == target){ // success
 						solutions.push(preview);
@@ -140,6 +228,7 @@ dnd = {
 						mods[index].count--;
 						index--;
 					}else if(index == mods.length - 1 && Math.abs(value) > Math.abs(mods[index].value)){ // append new, higher mod, but don't use it yet
+					//console.log(JSON.parse(JSON.stringify(preview)));
 						mods.push({
 							value: value,
 							count: 0,
@@ -147,6 +236,7 @@ dnd = {
 						});
 					}
 					
+					if(index < 0) break;
 					mods[index].count++;
 				}
 				
@@ -164,11 +254,12 @@ dnd = {
 					mod.count = 0;
 				}
 				mods[mods.length - 1].count = 1;
+				//console.log(mods)
 			}
 			
 			// score solutions, return the highest level/material ratio
-			console.log(solutions);
-			var bestSolution = {};
+			//console.log(solutions);
+			var bestSolution = {mods: []};
 			var hiScore = 0;
 			for(solution of solutions){
 				var score = solution.result.level / solution.recipe.length;
@@ -187,68 +278,31 @@ dnd = {
 			}
 			return result;
 		},
-		getDamageDice: (minDiceSize, avgDamage)=>{
+		getDamageDice: (avgDamage)=>{
 			// get dice rolls for each main damage type
 			var resultDice;
 			var resultDieSize;
 			var dieSizes = [4, 6, 8, 10, 12, 20, 100];
 			
-			// allow a die size of one down
-			for(var i = 1; i < dieSizes.length; i++){
-				if(dieSizes[i] >= minDiceSize){
-					minDiceSize = dieSizes[i - 1];
-					break;
-				}
-			}
-			//console.log(minDiceSize, avgDamage)
-			
 			// find a die size/count that most closely matches what the average damage should be
 			for(dieSize of dieSizes){
-				if(dieSize >= minDiceSize && dieSize * dieSize >= avgDamage){
+				if(dieSize * dieSize > avgDamage){ // enforce a minimum size
 					var dice = Math.round(avgDamage / (dieSize/2 + .5));
 					var difference = Math.abs(avgDamage - ((dieSize/2 + .5) * dice));
-					if(dnd.crafting.resultDieSize){
-						if(difference <= Math.abs(avgDamage - (dnd.crafting.resultDice * (dnd.crafting.resultDieSize/2 + .5)))){
-							dnd.crafting.resultDice = dice;
-							dnd.crafting.resultDieSize = dieSize;
+					if(resultDieSize){
+						if(difference <= Math.abs(avgDamage - (resultDice * (resultDieSize/2 + .5)))){
+							resultDice = dice;
+							resultDieSize = dieSize;
 						}
 					}else{
-						dnd.crafting.resultDice = dice;
-						dnd.crafting.resultDieSize = dieSize;
+						resultDice = dice;
+						resultDieSize = dieSize;
 					}
 				}
 			}
 			
-			return dnd.crafting.resultDice + "d" + dnd.crafting.resultDieSize;
+			return resultDice + "d" + resultDieSize;
 		},
-		initializeParameters: ()=>{
-			dnd.parameters = {
-				damage: false,
-				ac: false,
-				dac: false,
-				charges: false,
-				breakPoints: false,
-				dBreakPoint: false,
-				hit: false,
-				ddmg: false,
-				luck: false,
-				mods: 0,
-				items: 0,
-				hitItems: 0,
-				chargeItems: 0,
-				breakPointItems: 0,
-				dBreakPointItems: 0,
-				acItems: 0,
-				dacItems: 0,
-				dmgItems: 0,
-				ddmgItems: 0,
-				luckItems: 0,
-				ingredients: 0,
-				physicalDamageType: "",
-				magicalDamageType: ""
-			};
-		},
-		items: {},
 		getIngredient: (itemText)=>{ // get ingredient object from item string
 			var ingredient = {
 				ac: 0,
@@ -264,13 +318,14 @@ dnd = {
 				dieSize: 100,
 				hit: 0,
 				level: 0,
+				name: itemText.match(/(?<=\').+(?=\')/) + "",
 				price: 0,
 				truePrice: 0,
 				type: "",
 				hasDamage: false,
 				tags: {}
 			};
-			for(arg of item.trim().split(",")){
+			for(arg of itemText.trim().split(",")){
 				arg = arg.toUpperCase();
 				if(arg.match(/^\d+\-\d+$/)){ // [number]-[number]
 					// price-level
@@ -279,69 +334,78 @@ dnd = {
 					ingredient.price = Number(arg.substring(0, iSlash) / ingredient.level);
 					ingredient.truePrice = Number(arg.substring(0, iSlash));
 					ingredient.type = "ITEM";
-					dnd.parameters.items++;
+					dnd.crafting.parameters.items++;
 				}else if(arg.match(/^\d+$/)){ // [number]
 					// level
 					ingredient.level = Number(arg);
-					dnd.parameters.mods++;
+					dnd.crafting.parameters.mods++;
 					ingredient.type = "MOD";
 				}else if(arg.match(/^AC\d*[\+\-]?\d+$/)){ // ac(number)(+/-[number])
 					if(arg.match(/[\+\-]/)){
 						// AC modifier
 						ingredient.dac = Number(arg.match(/[\+\-]\d+/));
-						dnd.parameters.dac = true;
-						dnd.parameters.acItems++;
-						dnd.parameters.dacItems++;
+						dnd.crafting.parameters.dac = true;
+						dnd.crafting.parameters.acItems++;
+						dnd.crafting.parameters.dacItems++;
 					}
 					if(arg.match(/AC\d+/)){
 						// AC
 						ingredient.ac = arg.match(/\d+/) - 10;
-						dnd.parameters.ac = true;
-						dnd.parameters.acItems++;
+						dnd.crafting.parameters.ac = true;
+						dnd.crafting.parameters.acItems++;
 					}
-				}else if(arg.match(/^[\+\-]?\d+\/[\+\-]?\d+$/)){ // bp(+/-)[number] / [number]
+				}else if(arg.match(/^[\+\-]?\d+\/[\+\-]?\d+[A-Z]*$/)){ // bp(+/-)[number] / [number] [string]
 					if(arg.match(/[\+\-]/)){
 						// break point modifier
-						ingredient.dBreakPoint = Number(arg.match(/(?:\+|\-)\d+/));
+						ingredient.dBreakPoint = Number(arg.match(/[\+\-]?\d+/));
 						ingredient.dBreakPointMax = Number(arg.match(/[\+\-]?\d+$/));
-						console.log(arg, ingredient.dBreakPointMax, arg.match(/[\+\-]?\d$/));
-						dnd.parameters.dBreakPoints = true;
-						dnd.parameters.dBreakPointItems++;
+						dnd.crafting.parameters.dBreakPoints = true;
+						dnd.crafting.parameters.dBreakPointItems++;
 					}else{
 						// break points
 						ingredient.breakPoints = Number(arg.match(/\d+/));
-						ingredient.breakPointMax = Number(arg.match(/\d+$/));
-						dnd.parameters.breakPoints = true;
-						dnd.parameters.breakPointItems++;
+						ingredient.breakPointMax = Number(arg.match(/\d+(?=[A-Z]*$)/));
+						ingredient.shape = arg.match(/[A-Z]*$/);
 					}
+					
+					dnd.crafting.parameters.breakPoints = true;
+					dnd.crafting.parameters.breakPointItems++;
 				}else if(arg.match(/^HIT[\+\-]?\d+$/)){ // hit(+/-)[number]
 					// hit modifier
-					ingredient.hit = Number(arg.substr(3));
-					dnd.parameters.hit = true;
-					dnd.parameters.hitItems++;
+					ingredient.hit = Number(arg.match(/[\+\-]?\d+/));
+					dnd.crafting.parameters.hit = true;
+					dnd.crafting.parameters.hitItems++;
 				}else if(arg.match(/^DMG[\+\-]?\d+$/)){ // dmg(+/-)[number]
 					// dmg modifier
 					ingredient.dDamage = Number(arg.substr(3));
-					dnd.parameters.ddmg = true;
-					dnd.parameters.ddmgItems++;
+					dnd.crafting.parameters.ddmg = true;
+					dnd.crafting.parameters.ddmgItems++;
 				}else if(arg.match(/^LUCK[\+\-]?\d+$/)){ // luck(+/-)[number]
 					// luck save modifier
 					ingredient.luck = Number(arg.substr(4));
-					dnd.parameters.luck = true;
-					dnd.parameters.luckItems++;
+					dnd.crafting.parameters.luck = true;
+					dnd.crafting.parameters.luckItems++;
 				}else if(arg.match(/^CH\d+$/)){ // ch[number]
 					// charges
-					ingredient.charges = Number(arg.substr(2));
-					dnd.parameters.charges = true;
-					dnd.parameters.chargeItems++;
+					ingredient.charges = Number(arg.match(/\d+/));
+					dnd.crafting.parameters.charges = true;
+					dnd.crafting.parameters.chargeItems++;
 				}else if(arg.match(/^\d+D\d+[A-Z]*$/)){ // [dice]d[size](TYPE)
 					// damage
-					var iD = arg.indexOf("D");
-					var dice = Number(arg.substring(0, iD));
-					var iType = arg.substr(iD + 1).toLowerCase().search(/[a-z]/);
-					var dieSize = Number(iType > 0? arg.substr(iD + 1, iType) : arg.substr(iD + 1));
+					var dice = Number(arg.match(/\d+/));
+					var dieSize = Number(arg.match(/(?<=D)\d+/));
 					var avgDamage = dice * (dieSize/2 + .5);
-					var type = iType > 0? arg.substr(iD + 1 + iType).toLowerCase() : "";
+					var type = arg.match(/[A-Z]*$/);
+					
+					// autocorrect with default damage types
+					var defaultTypes = ["bludgeoning", "piercing", "slashing", "fire", "cold", "poison", "acid", "necrotic", "radiant", "force", "psychic", "lightning", "thunder", "cosmic"];
+					for(defaultType of defaultTypes){
+						if(type[0] && !defaultType.toUpperCase().indexOf(type)){
+							type = defaultType;
+							break;
+						}
+					}
+					
 					if(ingredient.damage[type]){
 						ingredient.damage[type].dieSize = Math.min(ingredient.damage[type].dieSize, dieSize);
 						ingredient.damage[type].avgDamage += avgDamage;
@@ -352,8 +416,10 @@ dnd = {
 							avgDamage: avgDamage
 						};
 					}
-					dnd.parameters.damage = true;
+					dnd.crafting.parameters.damage = true;
 					ingredient.hasDamage = true;
+				}else if(arg.match(/\'.+\'/)){
+					// name
 				}else{
 					// tags
 					ingredient.tags[arg] = arg;
@@ -361,10 +427,10 @@ dnd = {
 			}
 			//console.log(ingredient.level);
 			if(ingredient.hasDamage){
-				dnd.parameters.dmgItems++;
+				dnd.crafting.parameters.dmgItems++;
 			}
 			
-			dnd.parameters.ingredients++;
+			dnd.crafting.parameters.ingredients++;
 			
 			return ingredient;
 		},
@@ -373,29 +439,29 @@ dnd = {
 				recipe: recipe
 			};
 			
-			if(dnd.parameters.damage){
+			if(dnd.crafting.parameters.damage){
 				output.damage = dnd.crafting.result.damage;
 			}
 			
-			if(dnd.parameters.hit){
+			if(dnd.crafting.parameters.hit){
 				output.hit = "Hit: " + (dnd.crafting.result.hit < 0? "" : "+") + dnd.crafting.result.hit + "\n";
 			}
 			
-			if(dnd.parameters.ac){
-				if(dnd.parameters.dac){
+			if(dnd.crafting.parameters.ac){
+				if(dnd.crafting.parameters.dac){
 					output.ac = "AC: " + (dnd.crafting.result.ac + dnd.crafting.result.dac) + "\n";
 				}else{
 					output.ac = "AC: " + dnd.crafting.result.ac + "\n";
 				}
-			}else if(dnd.parameters.dac){
+			}else if(dnd.crafting.parameters.dac){
 				output.ac = "AC: " + (dnd.crafting.result.dac < 0? "" : "+") + dnd.crafting.result.dac + "\n"
 			}
 			
-			if(dnd.parameters.charges){
+			if(dnd.crafting.parameters.charges){
 				output.charges = "Charges: " + dnd.crafting.result.charges + "\n";
 			}
 			
-			if(dnd.parameters.luck){
+			if(dnd.crafting.parameters.luck){
 				output.luck = "Luck: " + dnd.crafting.result.luck + "\n";
 			}
 			
@@ -407,7 +473,7 @@ dnd = {
 				output.tags = output.tags.substr(1);
 			}
 			
-			if(dnd.parameters.breakPoints){
+			if(dnd.crafting.parameters.breakPoints){
 				output.breakPoints = "Break Points: " + dnd.crafting.result.breakPoints + "/" + dnd.crafting.result.breakPointMax + "\n";
 			}
 			
@@ -419,27 +485,27 @@ dnd = {
 			// output crafting string
 			var resultString = "";
 			resultString += (Math.round(dnd.crafting.result.truePrice) + "-" + dnd.crafting.result.level).replace(/^0\-/, "");
-			resultString += dnd.crafting.result.physicalDamageType? "," + dnd.crafting.getDamageDice(dnd.crafting.result.physicalDamageType.dieSize, dnd.crafting.result.physicalDamageType.avgDamage) + dnd.crafting.result.physicalDamageType.type : "";
-			resultString += dnd.crafting.result.magicalDamageType && dnd.crafting.result.magicalDamageType.type? "," + dnd.crafting.getDamageDice(dnd.crafting.result.magicalDamageType.dieSize, dnd.crafting.result.magicalDamageType.avgDamage) + dnd.crafting.result.magicalDamageType.type : "";
-			resultString += dnd.parameters.ddmg? ",dmg" + (dnd.crafting.result.ddmg < 0? "" : "+") + dnd.crafting.result.ddmg : "";
-			resultString += dnd.parameters.hit? ",hit" + (dnd.crafting.result.hit < 0? "" : "+") + dnd.crafting.result.hit : "";
-			if(dnd.parameters.ac){
-				if(dnd.parameters.dac){
+			resultString += dnd.crafting.result.physicalDamageType? "," + dnd.crafting.getDamageDice(dnd.crafting.result.physicalDamageType.avgDamage) + dnd.crafting.result.physicalDamageType.type : "";
+			resultString += dnd.crafting.result.magicalDamageType && dnd.crafting.result.magicalDamageType.type? "," + dnd.crafting.getDamageDice(dnd.crafting.result.magicalDamageType.avgDamage) + dnd.crafting.result.magicalDamageType.type : "";
+			resultString += dnd.crafting.parameters.ddmg? ",dmg" + (dnd.crafting.result.ddmg < 0? "" : "+") + dnd.crafting.result.ddmg : "";
+			resultString += dnd.crafting.parameters.hit? ",hit" + (dnd.crafting.result.hit < 0? "" : "+") + dnd.crafting.result.hit : "";
+			if(dnd.crafting.parameters.ac){
+				if(dnd.crafting.parameters.dac){
 					resultString += ",ac" + (dnd.crafting.result.ac + dnd.crafting.result.dac);
 				}else{
 					resultString += ",ac" + dnd.crafting.result.ac;
 				}
-			}else if(dnd.parameters.dac){
+			}else if(dnd.crafting.parameters.dac){
 				resultString += ",ac" + (dnd.crafting.result.dac < 0? "" : "+") + dnd.crafting.result.dac;
 			}
-			resultString += dnd.parameters.charges? ",ch" + dnd.crafting.result.charges : "";
-			resultString += dnd.parameters.luck? ",luck" + dnd.crafting.result.luck : "";
+			resultString += dnd.crafting.parameters.charges? ",ch" + dnd.crafting.result.charges : "";
+			resultString += dnd.crafting.parameters.luck? ",luck" + dnd.crafting.result.luck : "";
 			resultString += output.tags? "," + output.tags : "";
-			resultString += dnd.parameters.breakPoints? "," + dnd.crafting.result.breakPoints + "/" + dnd.crafting.result.breakPointMax : "";
+			resultString += dnd.crafting.parameters.breakPoints? "," + dnd.crafting.result.breakPoints + "/" + dnd.crafting.result.breakPointMax : "";
 			output.item = resultString;
 			output.result = dnd.crafting.result;
 			output.sum = dnd.crafting.sum;
-			output.parameters = dnd.parameters;
+			output.parameters = dnd.crafting.parameters;
 			
 			dnd.crafting.output = output;
 			return output;
@@ -447,31 +513,31 @@ dnd = {
 		getResult: (recipe)=>{ // calculate result parameters
 			var result = {
 				// (average AC) * (reduce if not focused on AC) * (increase if focused on AC)
-				ac: Math.round((dnd.crafting.sum.ac / dnd.parameters.acItems) * Math.min(Math.sqrt((dnd.parameters.acItems) / dnd.parameters.ingredients), 1) * Math.sqrt(dnd.parameters.acItems)),
+				ac: Math.round((dnd.crafting.sum.ac / dnd.crafting.parameters.acItems) * Math.min(Math.sqrt((dnd.crafting.parameters.acItems) / dnd.crafting.parameters.ingredients), 1) * Math.sqrt(dnd.crafting.parameters.acItems)),
 				// (average dAC) * (increase if focused on AC)
-				dac: Math.round((dnd.crafting.sum.dac / dnd.parameters.dacItems) * Math.sqrt(dnd.parameters.dacItems)),
+				dac: Math.round((dnd.crafting.sum.dac / dnd.crafting.parameters.dacItems) * Math.sqrt(dnd.crafting.parameters.dacItems)),
 				// (average hit) * (increase if focused on hit)
-				hit: Math.round((dnd.crafting.sum.hit / dnd.parameters.hitItems) * Math.sqrt(dnd.parameters.hitItems)),
+				hit: Math.round((dnd.crafting.sum.hit / dnd.crafting.parameters.hitItems) * Math.sqrt(dnd.crafting.parameters.hitItems)),
 				// (average dDamage) * (increase if focused on dDamage)
-				ddmg: Math.round((dnd.crafting.sum.ddmg / dnd.parameters.ddmgItems) * Math.sqrt(dnd.parameters.ddmgItems)),
+				ddmg: Math.round((dnd.crafting.sum.ddmg / dnd.crafting.parameters.ddmgItems) * Math.sqrt(dnd.crafting.parameters.ddmgItems)),
 				// (average # of charges) * (increase if focused on charges)
-				charges: Math.round((dnd.crafting.sum.charges / dnd.parameters.chargeItems) * Math.sqrt(dnd.parameters.chargeItems)),
+				charges: Math.round((dnd.crafting.sum.charges / dnd.crafting.parameters.chargeItems) * Math.sqrt(dnd.crafting.parameters.chargeItems) - (Math.sqrt(dnd.crafting.sum.maxCharges) - Math.sqrt(dnd.crafting.sum.minCharges))),
 				// (average luck) * (increase if focused on luck)
-				luck: Math.round((dnd.crafting.sum.luck / dnd.parameters.luckItems) * Math.sqrt(dnd.parameters.luckItems)),
+				luck: Math.round((dnd.crafting.sum.luck / dnd.crafting.parameters.luckItems) * Math.sqrt(dnd.crafting.parameters.luckItems)),
 				// tend toward the highest value (least stable component)
 				breakPoints: Math.round(dnd.crafting.sum.breakPointPowerSum / Math.max(dnd.crafting.sum.breakPointSum, 1) + dnd.crafting.sum.dBreakPoint),
-				// (average max break points) * (increase if focused on durability)
-				breakPointMax: Math.round((dnd.crafting.sum.breakPointMax / Math.max(dnd.parameters.breakPointItems, 1)) + (dnd.crafting.sum.dBreakPointMax * Math.sqrt(dnd.parameters.dBreakPointItems))),
+				// tend toward higest value (most durable component)
+				breakPointMax: Math.round(dnd.crafting.sum.breakPointMaxPowerSum / Math.max(dnd.crafting.sum.breakPointMax, 1) + dnd.crafting.sum.dBreakPointMax + Math.sign(dnd.crafting.parameters.dBreakPointItems - 1) * Math.max(Math.sqrt(dnd.crafting.sum.dBreakPointMax) / dnd.crafting.parameters.dBreakPointItems - 1, 0)),
 				level: dnd.crafting.sum.level,
-				truePrice: dnd.crafting.sum.truePrice + (dnd.crafting.sum.truePrice / Math.max(dnd.crafting.sum.itemLevel, 1)) * Math.sqrt(dnd.crafting.sum.level + Math.sqrt(Math.sqrt(dnd.crafting.sum.level) / Math.max(dnd.parameters.items, 1))),
+				truePrice: dnd.crafting.sum.truePrice + (dnd.crafting.sum.truePrice / Math.max(dnd.crafting.sum.itemLevel, 1)) * Math.sqrt(dnd.crafting.sum.level + Math.sqrt(dnd.crafting.sum.level) / Math.max(dnd.crafting.parameters.items, 1)),
 				damage: [],
 				tags: []
 			};
 			result.ac += 10;
 			// (increase per average price of ingredients) * (increase per number of ingredients) * (increase per average level)
-			result.craftingPrice = Math.sqrt(result.truePrice / dnd.parameters.ingredients) * Math.sqrt(dnd.parameters.ingredients) * Math.sqrt(result.level / dnd.parameters.ingredients);
+			result.craftingPrice = Math.sqrt(result.truePrice / dnd.crafting.parameters.ingredients) * Math.sqrt(dnd.crafting.parameters.ingredients) * Math.sqrt(result.level / dnd.crafting.parameters.ingredients);
 			// (increase by crafting price) * (increase by level of ingredients) * (increase by number of ingredients)
-			result.time = Math.sqrt(Math.max(Math.sqrt(result.craftingPrice), dnd.parameters.ingredients) * Math.sqrt(result.level) * Math.sqrt(dnd.parameters.ingredients));
+			result.time = Math.sqrt(Math.max(Math.sqrt(result.craftingPrice), dnd.crafting.parameters.ingredients) * Math.sqrt(result.level) * Math.sqrt(dnd.crafting.parameters.ingredients));
 			//  longer jobs cost more, (how long the crafting takes) * (increase hourly rate for larger projects)
 			result.craftingPrice *= result.time;
 			result.truePrice = dnd.crafting.sum.truePrice + result.craftingPrice + Math.sqrt(result.craftingPrice);
@@ -489,15 +555,15 @@ dnd = {
 			}
 			//console.log("result", result);
 			
-			if(dnd.parameters.damage){
+			if(dnd.crafting.parameters.damage){
 				// add max damage and min die size for each type to result
-				for(dnd.crafting.sumDamageType in dnd.crafting.sum.damage){
-					var damageType = dnd.crafting.sum.damage[dnd.crafting.sumDamageType];
+				for(sumDamageType in dnd.crafting.sum.damage){
+					var damageType = dnd.crafting.sum.damage[sumDamageType];
 					result.damage.push({
-						type: dnd.crafting.sumDamageType,
+						type: sumDamageType,
 						dieSize: damageType.dieSize,
 						// (average damage for this type) * (reduce if not focused on damage) * (increase by number of ingredients of this type)
-						avgDamage: (damageType.avgDamage / damageType.count) * Math.min(Math.sqrt((dnd.parameters.dmgItems + dnd.parameters.ddmgItems) / dnd.parameters.items), 1) * Math.sqrt(damageType.count),
+						avgDamage: (damageType.avgDamage / damageType.count) * Math.min(Math.sqrt((dnd.crafting.parameters.dmgItems + dnd.crafting.parameters.ddmgItems) / dnd.crafting.parameters.ingredients), 1) * Math.sqrt(damageType.count),
 					});
 				}
 				
@@ -513,21 +579,21 @@ dnd = {
 				}
 				
 				// identify the main damage types
-				if(!dnd.parameters.physicalDamageType){
+				if(!dnd.crafting.parameters.physicalDamageType){
 					var hiScore = 0;
 					for(damageType of result.damage){
 						if(damageType.avgDamage > hiScore && !(damageType.type.indexOf("bl") && damageType.type.indexOf("sl") && damageType.type.indexOf("pi"))){
 							hiScore = damageType.avgDamage;
-							dnd.parameters.physicalDamageType = damageType.type;
+							dnd.crafting.parameters.physicalDamageType = damageType.type;
 						}
 					}
 				}
-				if(!dnd.parameters.magicalDamageType){
+				if(!dnd.crafting.parameters.magicalDamageType){
 					var hiScore = 0;
 					for(damageType of result.damage){
 						if(damageType.avgDamage > hiScore && damageType.type.indexOf("bl") && damageType.type.indexOf("sl") && damageType.type.indexOf("pi")){
 							hiScore = damageType.avgDamage;
-							dnd.parameters.magicalDamageType = damageType.type;
+							dnd.crafting.parameters.magicalDamageType = damageType.type;
 						}
 					}
 				}
@@ -538,11 +604,11 @@ dnd = {
 				var physicalDamageType;
 				var magicalDamageType;
 				for(damageType of result.damage){
-					if(damageType.type == dnd.parameters.physicalDamageType){
+					if(damageType.type == dnd.crafting.parameters.physicalDamageType){
 						physicalDamageRatio = Math.sqrt(damageType.avgDamage / totalPhysicalDamage);
 						physicalDamageType = damageType;
 					}
-					if(damageType.type == dnd.parameters.magicalDamageType){
+					if(damageType.type == dnd.crafting.parameters.magicalDamageType){
 						magicalDamageRatio = Math.sqrt(damageType.avgDamage / totalMagicalDamage);
 						magicalDamageType = damageType;
 					}
@@ -572,12 +638,12 @@ dnd = {
 				var physicalDamageDice = "";
 				var magicalDamageDice = "";
 				if(physicalDamageType){
-					physicalDamageDice = dnd.crafting.getDamageDice(physicalDamageType.dieSize, physicalDamageType.avgDamage) + " " + physicalDamageType.type;
+					physicalDamageDice = dnd.crafting.getDamageDice(physicalDamageType.avgDamage) + " " + physicalDamageType.type;
 				}
 				if(magicalDamageType){
-					magicalDamageDice = dnd.crafting.getDamageDice(magicalDamageType.dieSize, magicalDamageType.avgDamage) + " " + magicalDamageType.type;
+					magicalDamageDice = dnd.crafting.getDamageDice(magicalDamageType.avgDamage) + " " + magicalDamageType.type;
 				}
-				result.damage = "Damage: " + physicalDamageDice + (physicalDamageDice && magicalDamageType && magicalDamageType.type? " + " : "") + (magicalDamageType && magicalDamageType.type? magicalDamageDice : "") + (dnd.parameters.ddmg? " " + (result.ddmg < 0? "-" : "+") + " " + Math.abs(result.ddmg) : "") + "\n";
+				result.damage = "Damage: " + physicalDamageDice + (physicalDamageDice && magicalDamageType && magicalDamageType.type? " + " : "") + (magicalDamageType && magicalDamageType.type? magicalDamageDice : "") + (dnd.crafting.parameters.ddmg? " " + (result.ddmg < 0? "-" : "+") + " " + Math.abs(result.ddmg) : "") + "\n";
 			}
 			
 			result.physicalDamageType = physicalDamageType;
@@ -592,12 +658,15 @@ dnd = {
 				breakPointSum: 0,
 				breakPointMax: 0,
 				breakPointPowerSum: 0,
+				breakPointMaxPowerSum: 0,
 				dBreakPoint: 0,
 				dBreakPointMax: 0,
 				damage: {},
 				ddmg: 0,
 				luck: 0,
 				hit: 0,
+				maxCharges: 0,
+				minCharges: 10000,
 				minDiceSize: 100,
 				level: 0,
 				price: 0,
@@ -619,6 +688,7 @@ dnd = {
 				sum.breakPointSum += ingredient.breakPoints;
 				sum.breakPointMax += ingredient.breakPointMax;
 				sum.breakPointPowerSum += ingredient.breakPoints * ingredient.breakPoints;
+				sum.breakPointMaxPowerSum += ingredient.breakPointMax * ingredient.breakPointMax;
 				sum.dBreakPoint += ingredient.dBreakPoint;
 				sum.dBreakPointMax += ingredient.dBreakPointMax;
 				
@@ -626,21 +696,29 @@ dnd = {
 					sum.tags[tag] = tag;
 				}
 				
-				if(ingredient.dieSize < sum.minDiceSize){
-					sum.minDiceSize = ingredient.dieSize;
+				if(ingredient.charges > sum.maxCharges){
+					sum.maxCharges = ingredient.charges;
 				}
+				if(ingredient.charges < sum.minCharges){
+					sum.minCharges = ingredient.charges;
+				}
+				
 				if(ingredient.type == "ITEM"){
 					sum.itemLevel += ingredient.level;
 				}
+				
+				if(ingredient.dieSize < sum.minDiceSize){
+					sum.minDiceSize = ingredient.dieSize;
+				}
 				for(ingredientDamageType in ingredient.damage){
-					damageType = ingredient.damage[ingredientDamageType];
+					var damageType = ingredient.damage[ingredientDamageType];
 					if(sum.damage[damageType.type]){
 						sum.damage[damageType.type].dieSize = Math.min(sum.damage[damageType.type].dieSize, damageType.dieSize);
 						sum.damage[damageType.type].avgDamage += damageType.avgDamage;
 						sum.damage[damageType.type].count++;
 					}else{
 						sum.damage[damageType.type] = {
-							type: damageType.type,
+							type: damageType.typedamage,
 							dieSize: damageType.dieSize,
 							avgDamage: damageType.avgDamage,
 							count: 1
@@ -651,10 +729,38 @@ dnd = {
 			
 			dnd.crafting.sum = sum;
 		},
+		initializeParameters: ()=>{
+			dnd.crafting.parameters = {
+				damage: false,
+				ac: false,
+				dac: false,
+				charges: false,
+				breakPoints: false,
+				dBreakPoint: false,
+				hit: false,
+				ddmg: false,
+				luck: false,
+				mods: 0,
+				items: 0,
+				hitItems: 0,
+				chargeItems: 0,
+				breakPointItems: 0,
+				dBreakPointItems: 0,
+				acItems: 0,
+				dacItems: 0,
+				dmgItems: 0,
+				ddmgItems: 0,
+				luckItems: 0,
+				ingredients: 0,
+				physicalDamageType: "",
+				magicalDamageType: ""
+			};
+		},
+		items: {},
 		merge: (ingredients)=>{ // generate the result object
 			dnd.crafting.initializeParameters();
 			
-			// parse input text to get item dnd.parameters
+			// parse input text to get item dnd.crafting.parameters
 			var recipe = [];
 			if(ingredients.constructor != Array){
 				ingredients = ingredients.trim().split(" ");
@@ -687,6 +793,31 @@ dnd = {
 			console.log(txt);
 			console.log(dnd.crafting.output.item);
 			//console.log(dnd.crafting.output);
+		},
+		printStats: (argString)=>{
+			var item = dnd.crafting.getIngredient(argString);
+			var result = "";
+			result += item.name? item.name + "\n" : "";
+			if(item.damage){
+				console.log(item.damage)
+				for(damageType in item.damage){
+					var damage = item.damage[damageType];
+					result += damage.avgDamage / (damage.dieSize / 2 + .5) + "d" + damage.dieSize + " " + damage.type + "\n";
+				}
+				result += item.dDamage? "damage " + (item.dDamage > 0? "+" : "") + item.dDamage + "\n" : "";
+				result += item.hit? "hit " + (item.hit > 0? "+" : "") + item.hit + "\n" : "";
+			}
+			result += item.charges? "charges " + item.charges + "\n" : "";
+			result += (item.breakPoints + item.breakPointMax)? "break points " + item.breakPoints + "/" + item.breakPointMax + "\n" : "";
+			result += item.shape? "form " + item.shape + "\n" : "";
+			if(item.tags){
+				result += "Tags:\n";
+				for(tag in item.tags){
+					result += "  " + tag + "\n";
+				}
+			}
+			console.log(result);
+			console.log(item);
 		},
 		result: {},
 		sum: {}
@@ -899,10 +1030,28 @@ dnd = {
 				result += combatant.getElementsByTagName("input")[0].value +" - "+ combatant.getElementsByClassName("combatant-dnd.summary__name")[0].textContent +"\n"
 		}
 		console.log(result);
+	},
+	weapon: {
+		arsenal: [],
+		printStats: (item)=>{
+			console.log();
+		}
 	}
 }
 
 function createHelpers(){
+	
+	arsenal = ()=>{
+		for(weapon of dnd.weapon.arsenal){
+			dnd.weapon.printStats(weapon);
+		}
+	};
+	
+	craft = (items, name) => {
+		return dnd.crafting.craft(items, "", name);
+	};
+	
+	dismantle = dnd.crafting.dismantle;
 
 	getItem = (name) => {
 		var itemString = dnd.crafting.items[arguments[0]];
@@ -910,19 +1059,23 @@ function createHelpers(){
 			itemString += " " + dnd.crafting.items[arguments[i]];
 		}
 		return itemString;
-	}
+	};
 	
 	getItems = () => {
 		console.log("dnd.crafting.items = JSON.parse(\'" + JSON.stringify(dnd.crafting.items) + "\')");
-	}
+	};
 	
 	help = () => {
 		console.log("");
-	}
+	};
 	
-	craft = (items, name) => {
+	recall = (name) => {
+		if(!name){
+			name = prompt("What is the name of the weapon you're recalling?");
+		}
+		dnd.weapon.printStats(weapon.arsenal[name]);
 		return dnd.crafting.craft(items, "", name);
-	}
+	};
 }
 
 createHelpers();
