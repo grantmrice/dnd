@@ -1006,6 +1006,16 @@ dnd = {
 }
 
 function createHelpers(){
+	
+	arsenal = ()=>{
+		for(weapon of dnd.weapon.arsenal){
+			dnd.weapon.printStats(weapon);
+		}
+	};
+	
+	craft = (items, name) => {
+		return dnd.crafting.craft(items, "", name);
+	};
 
 	getItem = (name) => {
 		var itemString = dnd.crafting.items[arguments[0]];
@@ -1013,19 +1023,23 @@ function createHelpers(){
 			itemString += " " + dnd.crafting.items[arguments[i]];
 		}
 		return itemString;
-	}
+	};
 	
 	getItems = () => {
 		console.log("dnd.crafting.items = JSON.parse(\'" + JSON.stringify(dnd.crafting.items) + "\')");
-	}
+	};
 	
 	help = () => {
 		console.log("");
-	}
+	};
 	
-	craft = (items, name) => {
+	recall = (name) => {
+		if(!name){
+			name = prompt("What is the name of the weapon you're recalling?");
+		}
+		dnd.weapon.printStats(weapon.arsenal[name]);
 		return dnd.crafting.craft(items, "", name);
-	}
+	};
 }
 
 createHelpers();
